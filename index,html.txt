@@ -1,0 +1,513 @@
+
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ADAB FC 4.0</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#091321;color:white;font-family:Arial,sans-serif}
+#game{max-width:1000px;margin:auto;background:#101c2e;border-radius:16px;overflow:hidden}
+header{text-align:center;padding:16px;background:linear-gradient(110deg,#063c29,#16804e)}
+header h1{margin:5px;font-size:27px}
+header small{letter-spacing:3px}
+#stats{display:flex;justify-content:space-around;padding:12px;background:#192a40;text-align:center}
+#stats small{display:block;color:#9fb4c9;font-size:10px}
+#stats b{font-size:23px}
+#viewport{height:480px;position:relative;background:#142a3b}
+#viewport canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;top:12px;left:12px;right:12px;display:flex;justify-content:space-between;pointer-events:none}
+.hud span{padding:8px;background:#071321c9;border:1px solid #ffffff30;border-radius:7px;font-size:11px}
+#cameraLabel{position:absolute;bottom:12px;left:12px;background:#071321b9;padding:7px 10px;border-radius:6px;font-size:10px}
+#sound{position:absolute;bottom:12px;right:12px;background:#071321c9;color:white;border:1px solid #ffffff55;border-radius:8px;padding:8px}
+.content{padding:15px}
+.panel{background:#203650;border:1px solid #405873;border-radius:13px;padding:16px}
+.tag{font-size:10px;letter-spacing:2px;color:#85e8ad;font-weight:bold}
+h2{font-size:21px}
+.muted{color:#b8c8d9;font-size:13px;line-height:1.6}
+input{width:100%;padding:12px;background:#102238;color:white;border:1px solid #637a91;border-radius:8px;margin:8px 0}
+button{font-family:inherit;font-weight:bold;cursor:pointer;border:0;border-radius:9px;padding:12px}
+.main{width:100%;background:#16a05d;color:white;margin-top:12px}
+.answers{display:grid;gap:9px}
+.answer{background:#344e69;color:white;text-align:left}
+.answer:disabled{opacity:.8}
+.answer.good{background:#17603d;border:2px solid #4ade80}
+.answer.bad{background:#75343e;border:2px solid #fb7185}
+.feedback{padding:12px;border-radius:9px;margin-top:12px;font-size:13px;line-height:1.6}
+.directions{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.directions button{background:#365573;color:white}
+.hide{display:none!important}
+.result{text-align:center}
+.result .trophy{font-size:65px}
+.resultgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:15px 0}
+.resultgrid div{background:#30465e;padding:14px;border-radius:9px}
+.resultgrid b{display:block;font-size:25px}
+@media(max-width:550px){
+ #viewport{height:360px}
+ header h1{font-size:22px}
+ .content{padding:10px}
+}
+</style>
+</head>
+<body>
+<div id="game">
+<header>
+ <small>ADAB FC • REALISTIC PENALTY EXPERIENCE</small>
+ <h1>⚽ ADAB FC 4.0</h1>
+ <div style="font-size:11px">PENDIDIKAN ISLAM TAHUN 5</div>
+</header>
+
+<div id="stats">
+ <div><small>GOL</small><b id="score">0</b></div>
+ <div><small>ROUND</small><b id="round">0/5</b></div>
+ <div><small>BETUL</small><b id="correct">0</b></div>
+</div>
+
+<div id="viewport">
+ <div class="hud">
+  <span>🏟️ ADAB FC ARENA</span>
+  <span id="status">PRE-MATCH</span>
+ </div>
+ <div id="cameraLabel">CAMERA: PLAYER POV • BEHIND PLAYER</div>
+ <button id="sound">🔊 SOUND</button>
+</div>
+
+<div class="content">
+ <div class="panel" id="intro">
+  <div class="tag">WELCOME TO THE STADIUM</div>
+  <h2>🏆 Selamat datang ke ADAB FC!</h2>
+  <p class="muted">Masuki stadium dan buktikan kemampuan kau sebagai penyerang utama. Jawab soalan Adab Jual Beli untuk mendapatkan peluang mengambil sepakan penalti.</p>
+  <label class="muted">NAMA PEMAIN</label>
+  <input id="name" maxlength="20" placeholder="Masukkan nama pemain">
+  <button class="main" id="start">MULA PERLAWANAN ⚽</button>
+ </div>
+
+ <div class="panel hide" id="quiz">
+  <div class="tag" id="topic">CABARAN ADAB</div>
+  <h2 id="question"></h2>
+  <div class="answers" id="answers"></div>
+  <div id="feedback" class="feedback hide"></div>
+  <div id="penalty" class="hide">
+   <h3>🎯 PILIH ARAH SEPAKAN</h3>
+   <p class="muted">Kamera berada di belakang pemain. Pilih arah untuk menewaskan penjaga gol!</p>
+   <div class="directions">
+    <button data-direction="left">↖️<br>KIRI</button>
+    <button data-direction="center">⬆️<br>TENGAH</button>
+    <button data-direction="right">↗️<br>KANAN</button>
+   </div>
+  </div>
+  <button class="main hide" id="next">SOALAN SETERUSNYA →</button>
+ </div>
+
+ <div class="panel result hide" id="result">
+  <div class="trophy" id="trophy">🏆</div>
+  <div class="tag">FULL TIME</div>
+  <h2 id="rank"></h2>
+  <p class="muted" id="summary"></p>
+  <div class="resultgrid">
+   <div>JUMLAH GOL<b id="finalScore">0</b></div>
+   <div>JAWAPAN BETUL<b id="finalCorrect">0/5</b></div>
+  </div>
+  <p class="muted">Terus amalkan kejujuran, amanah dan keredaan dalam jual beli.</p>
+  <button class="main" id="restart">🔄 MAIN SEMULA</button>
+ </div>
+</div>
+<div style="text-align:center;padding:12px;color:#8299b1;font-size:10px">ADAB FC 4.0 • LEARN THROUGH PLAY</div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const THREE=window.THREE;
+if(!THREE){$('viewport').textContent="Three.js gagal dimuatkan.";return;}
+
+// SCENE
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x9bb5c9);
+scene.fog=new THREE.Fog(0x9bb5c9,35,95);
+
+const camera=new THREE.PerspectiveCamera(48,1,.1,150);
+camera.position.set(0,4.2,11);
+camera.lookAt(0,1.5,-9);
+
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+$('viewport').appendChild(renderer.domElement);
+
+scene.add(new THREE.HemisphereLight(0xe6f4ff,0x435d3d,1.4));
+const sun=new THREE.DirectionalLight(0xfff0d8,2.2);
+sun.position.set(-10,20,12);
+sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048);
+scene.add(sun);
+
+for(const x of [-14,14]){
+ const lamp=new THREE.PointLight(0xffffff,65,35);
+ lamp.position.set(x,12,-7);
+ scene.add(lamp);
+}
+
+const M=(c,r=.8,m=0)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:m});
+const white=M(0xffffff);
+const grass=M(0x268440);
+const grass2=M(0x329b4e);
+const blue=M(0x1265b7);
+const red=M(0xd83d43);
+const skin=M(0xc98b67);
+const black=M(0x151a22);
+const yellow=M(0xffd52e);
+
+function box(parent,x,y,z,w,h,d,material){
+ const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);
+ o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;
+ parent.add(o);return o;
+}
+function sphere(parent,x,y,z,r,material){
+ const o=new THREE.Mesh(new THREE.SphereGeometry(r,20,16),material);
+ o.position.set(x,y,z);o.castShadow=true;
+ parent.add(o);return o;
+}
+function cylinder(parent,x,y,z,r,h,material){
+ const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,16),material);
+ o.position.set(x,y,z);o.castShadow=true;
+ parent.add(o);return o;
+}
+
+// PITCH
+box(scene,0,-.2,-8,32,.4,38,grass);
+for(let i=0;i<13;i++){
+ box(scene,0,.008,-25+i*3,30,.015,1.5,i%2?grass:grass2);
+}
+function marking(x,z,w,d){
+ box(scene,x,.025,z,w,.03,d,white);
+}
+marking(0,-24,26,.06);
+marking(0,7,26,.06);
+marking(-13,-8,.06,31);
+marking(13,-8,.06,31);
+marking(0,-8,.06,31);
+marking(0,-17,8,.06);
+marking(-4,-17,.06,5);
+marking(4,-17,.06,5);
+
+// GOAL
+box(scene,-3.2,1.25,-19,.14,2.5,.14,white);
+box(scene,3.2,1.25,-19,.14,2.5,.14,white);
+box(scene,0,2.5,-19,6.5,.14,.14,white);
+const netMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:.5});
+function net(a,b){
+ const g=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a),new THREE.Vector3(...b)]);
+ scene.add(new THREE.Line(g,netMat));
+}
+for(let x=-3;x<=3;x+=.3)net([x,0,-19],[x,2.45,-19]);
+for(let y=0;y<=2.5;y+=.25)net([-3.2,y,-19],[3.2,y,-19]);
+
+// STADIUM
+for(let side of [-1,1]){
+ for(let i=0;i<7;i++){
+  box(scene,side*(8.5+i*.6),1+i*.42,-8,1.4,.8,32,M(i%2?0x253d58:0x344d65));
+ }
+ box(scene,side*12.8,5,-8,2,.35,34,M(0x26374c));
+}
+
+// CROWD
+const colours=[0xffd64b,0xe95b5b,0xffffff,0x3985df,0x42ae77];
+for(let i=0;i<350;i++){
+ const side=i%2?1:-1;
+ const row=Math.floor(i/2)%6;
+ const o=sphere(scene,side*(9+row*.65),1.5+row*.42,-23+Math.random()*29,.105,M(colours[i%5]));
+ o.scale.y=1.6;
+}
+
+// FLOODLIGHTS
+for(const x of [-14,14]){
+ cylinder(scene,x,5,-8,.13,10,M(0x526577));
+ box(scene,x,10,-8,2.5,.2,.6,white);
+ for(let j=0;j<4;j++){
+  const l=new THREE.PointLight(0xffffff,32,28);
+  l.position.set(x-1+j*.65,10,-8);scene.add(l);
+ }
+}
+
+// HUMAN MODEL
+function makeHuman(jersey,shorts,gloves){
+ const group=new THREE.Group();
+ const torso=box(group,0,1.5,0,.73,.85,.4,jersey);
+ cylinder(group,0,1.98,0,.11,.18,skin);
+ sphere(group,0,2.23,0,.25,skin);
+ sphere(group,0,2.4,-.04,.25,black);
+ sphere(group,-.1,2.25,.22,.027,black);
+ sphere(group,.1,2.25,.22,.027,black);
+
+ box(group,0,1.02,0,.7,.28,.4,shorts);
+
+ const arms=[],legs=[];
+ for(const side of [-1,1]){
+  const a=new THREE.Group();
+  a.position.set(side*.42,1.8,0);
+  group.add(a);
+  cylinder(a,0,-.29,0,.13,.57,jersey);
+  sphere(a,0,-.6,0,.11,gloves);
+  arms.push(a);
+
+  const l=new THREE.Group();
+  l.position.set(side*.19,.86,0);
+  group.add(l);
+  cylinder(l,0,-.31,0,.13,.65,shorts);
+  box(l,0,-.69,.13,.25,.14,.4,black);
+  legs.push(l);
+ }
+ return {group,arms,legs};
+}
+
+// CAMERA PLAYER - BACK VIEW
+const player=makeHuman(blue,black,skin);
+scene.add(player.group);
+player.group.position.set(0,0,2.2);
+
+// GOALKEEPER
+const keeper=makeHuman(red,blue,yellow);
+scene.add(keeper.group);
+keeper.group.position.set(0,0,-17.6);
+
+// BALL
+const football=new THREE.Group();
+scene.add(football);
+sphere(football,0,0,0,.22,white);
+for(let i=0;i<5;i++){
+ const a=i*Math.PI*2/5;
+ sphere(football,.19*Math.cos(a),.19*Math.sin(a),.05,.06,black);
+}
+football.position.set(0,.23,-1.5);
+
+// CAMERA CONTROL
+function cameraBehind(){
+ camera.position.set(0,4.2,11);
+ camera.lookAt(0,1.5,-10);
+}
+cameraBehind();
+
+// ANIMATION
+const clock=new THREE.Clock();
+let mode='idle',startTime=0;
+let ballFrom=new THREE.Vector3(),ballTo=new THREE.Vector3();
+let saveDir='center';
+function smooth(t){return t*t*(3-2*t)}
+
+function updateAnimation(t){
+ if(mode==='idle'){
+  player.group.position.y=Math.sin(t*2)*.02;
+  player.legs[0].rotation.x=0;
+  player.legs[1].rotation.x=0;
+ }
+ if(mode==='run'){
+  const p=Math.min(1,(t-startTime)/.8);
+  const s=Math.sin(p*Math.PI*4);
+  player.group.position.z=2.2-1.1*p;
+  player.legs[0].rotation.x=s*.7;
+  player.legs[1].rotation.x=-s*.7;
+  player.arms[0].rotation.x=-s*.5;
+  player.arms[1].rotation.x=s*.5;
+  if(p>=1)mode='prepare';
+ }
+ if(mode==='kick'){
+  const p=Math.min(1,(t-startTime)/.6);
+  player.legs[0].rotation.x=.15;
+  player.legs[1].rotation.x=-2*Math.sin(p*Math.PI*.85);
+  player.arms[0].rotation.z=.4;
+  player.arms[1].rotation.z=-.4;
+  if(p>=1)mode='idle';
+ }
+ if(mode==='dive'){
+  const p=smooth(Math.min(1,(t-startTime)/.8));
+  const d=saveDir==='left'?-1:saveDir==='right'?1:0;
+  keeper.group.position.x=d*1.8*p;
+  keeper.group.position.y=-.55*p;
+  keeper.group.rotation.z=-d*1.1*p;
+  keeper.legs.forEach(l=>l.rotation.x=d*.8*p);
+  keeper.arms.forEach(a=>a.rotation.z=d*.9*p);
+ }
+ if(mode==='ball'){
+  const p=Math.min(1,(t-startTime)/.8);
+  football.position.lerpVectors(ballFrom,ballTo,smooth(p));
+  football.position.y+=Math.sin(p*Math.PI)*1.2;
+  football.rotation.x+=.15;
+  football.rotation.z+=.12;
+ }
+}
+function render(){
+ requestAnimationFrame(render);
+ const t=clock.getElapsedTime();
+ updateAnimation(t);
+ renderer.render(scene,camera);
+}
+render();
+
+new ResizeObserver(()=>{
+ const w=$('viewport').clientWidth,h=$('viewport').clientHeight;
+ camera.aspect=w/h;camera.updateProjectionMatrix();
+ renderer.setSize(w,h,false);
+}).observe($('viewport'));
+
+// QUIZ
+const bank=[
+{t:'KEJUJURAN',q:'Apakah tindakan betul apabila menjual buah yang mempunyai kecacatan?',a:['Menyembunyikan kecacatan','Memberitahu pembeli tentang kecacatan','Menjual tanpa penjelasan'],c:1,w:'Penjual perlu menerangkan keadaan sebenar barang.'},
+{t:'AMANAH',q:'Apakah maksud amanah dalam jual beli?',a:['Menjaga hak dan kepercayaan orang lain','Mengambil untung sebanyak mungkin','Menipu pelanggan'],c:0,w:'Amanah bermaksud menjaga kepercayaan dan tanggungjawab.'},
+{t:'KEREDAAN',q:'Bilakah jual beli berlaku dengan keredaan?',a:['Pembeli dipaksa','Kedua-dua pihak bersetuju tanpa paksaan','Penjual menentukan harga sesuka hati'],c:1,w:'Jual beli hendaklah atas persetujuan kedua-dua pihak.'},
+{t:'LARANGAN MENIPU',q:'Peniaga mengurangkan timbangan barang. Apakah hukumnya?',a:['Dibenarkan','Digalakkan','Dilarang kerana menipu'],c:2,w:'Mengurangkan timbangan merupakan perbuatan menipu.'},
+{t:'ADAB PEMBELI',q:'Apakah adab seorang pembeli?',a:['Menghina barang','Berkomunikasi sopan dan membayar mengikut persetujuan','Mengambil barang tanpa membayar'],c:1,w:'Pembeli perlu bersopan dan menunaikan bayaran.'},
+{t:'KEBERSIHAN',q:'Apakah yang perlu dipastikan sebelum menjual makanan?',a:['Makanan bersih dan selamat','Makanan tidak bertutup','Makanan dicampur bahan berbahaya'],c:0,w:'Barang jualan hendaklah bersih dan tidak memudaratkan.'},
+{t:'ADAB PENJUAL',q:'Bagaimanakah penjual melayan pelanggan?',a:['Dengan kasar','Dengan sombong','Dengan mesra dan sopan'],c:2,w:'Penjual perlu melayan pelanggan dengan mesra.'},
+{t:'BARANG HALAL',q:'Apakah barang yang boleh dijual dalam Islam?',a:['Barang haram','Barang halal dan bermanfaat','Barang curi'],c:1,w:'Umat Islam hendaklah menjual barang yang halal.'}
+];
+
+let questions=[],round=0,score=0,correct=0,name='Pemain',locked=false,shot=false;
+let audio=null,sound=true;
+const show=id=>$(id).classList.remove('hide');
+const hide=id=>$(id).classList.add('hide');
+
+function tone(freq){
+ if(!sound)return;
+ try{
+  audio=audio||new(window.AudioContext||window.webkitAudioContext)();
+  audio.resume();
+  const o=audio.createOscillator(),g=audio.createGain();
+  o.frequency.value=freq;
+  g.gain.setValueAtTime(.09,audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.25);
+  o.connect(g);g.connect(audio.destination);
+  o.start();o.stop(audio.currentTime+.25);
+ }catch(e){}
+}
+function stats(){
+ $('score').textContent=score;
+ $('correct').textContent=correct;
+ $('round').textContent=round+'/5';
+}
+function resetScene(){
+ mode='idle';
+ player.group.position.set(0,0,2.2);
+ player.group.rotation.set(0,0,0);
+ player.legs.forEach(l=>l.rotation.set(0,0,0));
+ player.arms.forEach(a=>a.rotation.set(0,0,0));
+ keeper.group.position.set(0,0,-17.6);
+ keeper.group.rotation.set(0,0,0);
+ keeper.legs.forEach(l=>l.rotation.set(0,0,0));
+ keeper.arms.forEach(a=>a.rotation.set(0,0,0));
+ football.position.set(0,.23,-1.5);
+ cameraBehind();
+}
+function load(){
+ locked=false;shot=false;
+ resetScene();
+ hide('feedback');hide('penalty');hide('next');
+ const q=questions[round];
+ $('topic').textContent='CABARAN '+(round+1)+' • '+q.t;
+ $('question').textContent=q.q;
+ $('answers').innerHTML='';
+ q.a.forEach((v,i)=>{
+  const b=document.createElement('button');
+  b.className='answer';
+  b.textContent=String.fromCharCode(65+i)+'. '+v;
+  b.onclick=()=>answer(i,b);
+  $('answers').appendChild(b);
+ });
+ stats();
+}
+function answer(i,b){
+ if(locked)return;
+ locked=true;
+ const q=questions[round];
+ [...$('answers').children].forEach((x,j)=>{
+  x.disabled=true;
+  if(j===q.c)x.classList.add('good');
+ });
+ show('feedback');
+ if(i===q.c){
+  correct++;
+  $('feedback').textContent='✅ TEPAT! '+q.w;
+  $('feedback').style.background='#155d3a';
+  show('penalty');
+  mode='run';startTime=clock.getElapsedTime();
+  tone(650);
+ }else{
+  b.classList.add('bad');
+  $('feedback').textContent='❌ BELUM TEPAT! '+q.w;
+  $('feedback').style.background='#71353d';
+  show('next');
+ }
+ stats();
+}
+function shoot(direction){
+ if(shot)return;
+ shot=true;
+ saveDir=['left','center','right'][Math.floor(Math.random()*3)];
+ mode='kick';startTime=clock.getElapsedTime();
+ setTimeout(()=>{
+  mode='dive';startTime=clock.getElapsedTime();
+ },180);
+ setTimeout(()=>{
+  ballFrom.copy(football.position);
+  ballTo.set(direction==='left'?-2.3:direction==='right'?2.3:0,1.1,-18.7);
+  mode='ball';startTime=clock.getElapsedTime();
+  tone(330);
+ },350);
+ setTimeout(()=>{
+  if(direction===saveDir){
+   $('feedback').textContent='🧤 SAVE! Penjaga gol berjaya melakukan diving dan menyelamatkan bola!';
+   $('feedback').style.background='#71353d';
+   tone(180);
+  }else{
+   score++;
+   $('feedback').textContent='⚽ GOOOOOL! '+name+' berjaya menjaringkan gol!';
+   $('feedback').style.background='#155d3a';
+   tone(850);
+  }
+  show('next');
+  $('next').textContent=round===4?'KEPUTUSAN AKHIR 🏆':'SOALAN SETERUSNYA →';
+  stats();
+ },1400);
+}
+function finish(){
+ hide('quiz');show('result');resetScene();
+ $('finalScore').textContent=score;
+ $('finalCorrect').textContent=correct+'/5';
+ $('rank').textContent=score===5?'LEGENDARY PLAYER!':score>=3?'JUARA ADAB FC!':score>=1?'PEMAIN BERBAKAT!':'TERUS BERLATIH!';
+ $('trophy').textContent=score>=3?'🏆':'⚽';
+ $('summary').textContent='Tahniah '+name+'! Kau menjawab '+correct+' daripada 5 soalan dan menjaringkan '+score+' gol.';
+ $('status').textContent='FULL TIME';
+}
+function start(){
+ name=$('name').value.trim()||'Pemain';
+ questions=[...bank].sort(()=>Math.random()-.5).slice(0,5);
+ round=0;score=0;correct=0;
+ hide('intro');hide('result');show('quiz');
+ $('status').textContent='MATCH STARTED';
+ load();tone(700);
+}
+$('start').onclick=start;
+$('restart').onclick=start;
+$('next').onclick=()=>{
+ round++;
+ if(round>=5){finish();return;}
+ load();
+};
+root.querySelectorAll('[data-direction]').forEach(b=>{
+ b.onclick=()=>shoot(b.dataset.direction);
+});
+$('sound').onclick=()=>{
+ sound=!sound;
+ $('sound').textContent=sound?'🔊 SOUND':'🔇 MUTED';
+ if(sound)tone(700);
+};
+})();
+</script>
+</body>
+</html>
